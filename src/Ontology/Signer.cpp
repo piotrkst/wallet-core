@@ -4,9 +4,9 @@
 // terms governing use, modification, and redistribution, is contained in the
 // file LICENSE at the root of the source code distribution tree.
 
+#include "Signer.h"
 #include "HexCoding.h"
 #include "SigData.h"
-#include "Signer.h"
 
 #include "../Hash.h"
 
@@ -15,26 +15,18 @@
 using namespace TW;
 using namespace TW::Ontology;
 
-Signer::Signer(const std::string& priKey) {
-    privateKey = parse_hex(priKey);
-    auto pubKey = PrivateKey(privateKey).getPublicKey(PublicKeyType::nist256p1);
-    publicKey = pubKey.bytes;
-    address = Address(pubKey).string();
-}
-
-Signer::Signer(const Data& priKey) {
-    privateKey = priKey;
-    auto pubKey = PrivateKey(privateKey).getPublicKey(PublicKeyType::nist256p1);
+Signer::Signer(TW::PrivateKey priKey) : privateKey(std::move(priKey)) {
+    auto pubKey = privateKey.getPublicKey(TWPublicKeyTypeNIST256p1);
     publicKey = pubKey.bytes;
     address = Address(pubKey).string();
 }
 
 PrivateKey Signer::getPrivateKey() const {
-    return PrivateKey(privateKey);
+    return privateKey;
 }
 
 PublicKey Signer::getPublicKey() const {
-    return PublicKey(publicKey);
+    return PublicKey(publicKey, TWPublicKeyTypeNIST256p1);
 }
 
 Address Signer::getAddress() const {

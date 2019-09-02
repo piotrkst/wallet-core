@@ -38,8 +38,7 @@ bool Address::isValid(const std::string& stringPadded) {
 
     // Check if valid Base32
     auto hash = std::array<uint8_t, Address::size>();
-    if (base32_decode(string.data() + 4, 32, hash.data(), hash.size(), BASE32_ALPHABET_NIMIQ) ==
-        NULL)
+    if (base32_decode(string.data() + 4, 32, hash.data(), hash.size(), BASE32_ALPHABET_NIMIQ) == nullptr)
         return false;
 
     // Calculate checksum
@@ -88,7 +87,7 @@ Address::Address(const std::vector<uint8_t>& data) {
 
 Address::Address(const PublicKey& publicKey) {
     auto hash = std::array<uint8_t, 32>();
-    blake2b(publicKey.bytes.data() + 1, 32, hash.data(), hash.size());
+    blake2b(publicKey.bytes.data(), 32, hash.data(), hash.size());
     std::copy(hash.begin(), hash.begin() + Address::size, bytes.begin());
 }
 
@@ -120,7 +119,7 @@ std::string Address::string() const {
     check = 98 - check;
 
     // Set checksum in address
-    string[2] = '0' + (check / 10);
+    string[2] = '0' + static_cast<uint8_t>((check / 10));
     string[3] = '0' + (check % 10);
 
     return string;

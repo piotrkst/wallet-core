@@ -11,36 +11,29 @@
 
 #include <string>
 
-namespace TW {
-namespace Stellar {
+namespace TW::Stellar {
 
 class Address {
-  public:
+  private:
     // 56 character base-32 encoded string
     static const size_t size = 56;
+
     // Decodes to 35 bytes
     static const size_t rawSize = 35;
+
     // Raw key size is 32 bytes
     static const size_t keySize = 32;
 
+  public:
     /// Address data consisting of a prefix byte followed by the public key
     /// hash.
     std::array<byte, keySize> bytes;
-
-    /// Determines whether a collection of bytes makes a valid Stellar address.
-    template <typename T>
-    static bool isValid(const T& data) {
-        return data.size() == size;
-    }
 
     /// Determines whether a string makes a valid  address.
     static bool isValid(const std::string& string);
 
     /// Initializes a Stellar address with a string representation.
     explicit Address(const std::string& string);
-
-    /// Initializes a Stellar address with a collection of bytes.
-    explicit Address(const std::vector<uint8_t>& data);
 
     /// Initializes a Stellar address with a public key.
     explicit Address(const PublicKey& publicKey);
@@ -49,12 +42,11 @@ class Address {
     std::string string() const;
 };
 
-static inline bool operator==(const Address& lhs, const Address& rhs) {
+inline bool operator==(const Address& lhs, const Address& rhs) {
     return lhs.bytes == rhs.bytes;
 }
 
-} // namespace Stellar
-} // namespace TW
+} // namespace TW::Stellar
 
 /// Wrapper for C interface.
 struct TWStellarAddress {

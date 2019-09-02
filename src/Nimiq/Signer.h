@@ -11,8 +11,7 @@
 #include "../Hash.h"
 #include "../PrivateKey.h"
 
-namespace TW {
-namespace Nimiq {
+namespace TW::Nimiq {
 
 /// Helper class that performs Nimiq transaction signing.
 class Signer {
@@ -26,12 +25,11 @@ class Signer {
         std::vector<uint8_t> pubkeyInternal;
         pubkeyInternal.push_back(0x01); // Code for Ed25519
         pubkeyInternal.insert(pubkeyInternal.end(), data.begin(), data.end());
-        return PublicKey(std::move(pubkeyInternal));
+        return PublicKey(std::move(pubkeyInternal), TWPublicKeyTypeED25519);
     }
 };
 
-} // namespace Nimiq
-} // namespace TW
+} // namespace TW::Nimiq
 
 /// Wrapper for C interface.
 struct TWNimiqSigner {

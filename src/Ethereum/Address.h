@@ -9,11 +9,10 @@
 #include "../PublicKey.h"
 
 #include <array>
-#include <stdint.h>
+#include <cstdint>
 #include <vector>
 
-namespace TW {
-namespace Ethereum {
+namespace TW::Ethereum {
 
 class Address {
   public:
@@ -25,7 +24,7 @@ class Address {
     std::array<uint8_t, size> bytes;
 
     /// Determines whether a collection of bytes makes a valid  address.
-    static bool isValid(const std::vector<uint8_t>& data) { return data.size() == size; }
+    static bool isValid(const Data& data) { return data.size() == size; }
 
     /// Determines whether a string makes a valid  address.
     static bool isValid(const std::string& string);
@@ -34,7 +33,7 @@ class Address {
     explicit Address(const std::string& string);
 
     /// Initializes an address with a collection of bytes.
-    explicit Address(const std::vector<uint8_t>& data);
+    explicit Address(const Data& data);
 
     /// Initializes an address with a public key.
     explicit Address(const PublicKey& publicKey);
@@ -43,12 +42,11 @@ class Address {
     std::string string() const;
 };
 
-static inline bool operator==(const Address& lhs, const Address& rhs) {
+inline bool operator==(const Address& lhs, const Address& rhs) {
     return lhs.bytes == rhs.bytes;
 }
 
-} // namespace Ethereum
-} // namespace TW
+} // namespace TW::Ethereum
 
 /// Wrapper for C interface.
 struct TWEthereumAddress {

@@ -9,12 +9,12 @@
 #include "../Data.h"
 
 #include <TrustWalletCore/TWBitcoinOpCodes.h>
+#include <TrustWalletCore/TWCoinType.h>
 
 #include <string>
 #include <vector>
 
-namespace TW {
-namespace Bitcoin {
+namespace TW::Bitcoin {
 
 class Script {
   public:
@@ -79,7 +79,7 @@ class Script {
 
     /// Builds a pay-to-public-key-hash (P2PKH) script appropriate for the given
     /// address.
-    static Script buildForAddress(const std::string& address);
+    static Script buildForAddress(const std::string& address, enum TWCoinType coin);
 
     /// Encodes the script.
     void encode(Data& data) const;
@@ -110,8 +110,7 @@ inline bool operator!=(const Script& lhs, const Script& rhs) {
     return !(lhs == rhs);
 }
 
-} // namespace Bitcoin
-} // namespace TW
+} // namespace TW::Bitcoin
 
 /// Wrapper for C interface.
 struct TWBitcoinScript {

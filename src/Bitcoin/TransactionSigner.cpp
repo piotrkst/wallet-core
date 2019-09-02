@@ -14,6 +14,7 @@
 #include "../Hash.h"
 #include "../HexCoding.h"
 #include "../Zcash/Transaction.h"
+#include "../Groestlcoin/Transaction.h"
 
 using namespace TW;
 using namespace TW::Bitcoin;
@@ -25,11 +26,11 @@ Result<Transaction> TransactionSigner<Transaction>::sign() {
               std::back_inserter(signedInputs));
 
     const bool hashSingle =
-        ((input.hash_type() & ~TWSignatureHashTypeAnyoneCanPay) == TWSignatureHashTypeSingle);
+        ((input.hash_type() & ~TWBitcoinSigHashTypeAnyoneCanPay) == TWBitcoinSigHashTypeSingle);
     for (auto i = 0; i < plan.utxos.size(); i += 1) {
         auto& utxo = plan.utxos[i];
 
-        // Only sign TWSignatureHashTypeSingle if there's a corresponding output
+        // Only sign TWBitcoinSigHashTypeSingle if there's a corresponding output
         if (hashSingle && i >= transaction.outputs.size()) {
             continue;
         }
@@ -54,7 +55,7 @@ Result<void> TransactionSigner<Transaction>::sign(Script script, size_t index,
     std::vector<Data> witnessStack;
 
     uint32_t signatureVersion = [this]() {
-        if ((input.hash_type() & TWSignatureHashTypeFork) != 0) {
+        if ((input.hash_type() & TWBitcoinSigHashTypeFork) != 0) {
             return WITNESS_V0;
         } else {
             return BASE;
@@ -189,7 +190,7 @@ Result<std::vector<Data>> TransactionSigner<Transaction>::signStep(
             return Result<std::vector<Data>>::failure("Missing private key.");
         }
 
-        auto pubkey = PrivateKey(key).getPublicKey(PublicKeyType::secp256k1);
+        auto pubkey = PrivateKey(key).getPublicKey(TWPublicKeyTypeSECP256k1);
         auto signature =
             createSignature(transactionToSign, script, key, index, utxo.amount(), version);
         if (signature.empty()) {
@@ -208,7 +209,7 @@ Data TransactionSigner<Transaction>::createSignature(const Transaction& transact
                                                      const Script& script, const Data& key,
                                                      size_t index, Amount amount,
                                                      uint32_t version) {
-    auto sighash = transaction.getSignatureHash(script, index, input.hash_type(), amount,
+    auto sighash = transaction.getSignatureHash(script, index, static_cast<TWBitcoinSigHashType>(input.hash_type()), amount,
                                                 static_cast<TWBitcoinSignatureVersion>(version));
     auto pk = PrivateKey(key);
     auto sig = pk.signAsDER(Data(begin(sighash), end(sighash)), TWCurveSECP256k1);
@@ -234,10 +235,10 @@ Data TransactionSigner<Transaction>::pushAll(const std::vector<Data>& results) {
             data.push_back(static_cast<uint8_t>(result.size()));
         } else if (result.size() <= 0xffff) {
             data.push_back(OP_PUSHDATA2);
-            encode16LE(result.size(), data);
+            encode16LE(static_cast<uint16_t>(result.size()), data);
         } else {
             data.push_back(OP_PUSHDATA4);
-            encode32LE(result.size(), data);
+            encode32LE(static_cast<uint32_t>(result.size()), data);
         }
         std::copy(begin(result), end(result), back_inserter(data));
     }
@@ -247,7 +248,7 @@ Data TransactionSigner<Transaction>::pushAll(const std::vector<Data>& results) {
 template <typename Transaction>
 Data TransactionSigner<Transaction>::keyForPublicKeyHash(const Data& hash) const {
     for (auto& key : input.private_key()) {
-        auto publicKey = PrivateKey(key).getPublicKey(PublicKeyType::secp256k1);
+        auto publicKey = PrivateKey(key).getPublicKey(TWPublicKeyTypeSECP256k1);
         auto keyHash = TW::Hash::ripemd(TW::Hash::sha256(publicKey.bytes));
         if (std::equal(std::begin(keyHash), std::end(keyHash), std::begin(hash), std::end(hash))) {
             return Data(key.begin(), key.end());
@@ -270,3 +271,4 @@ Data TransactionSigner<Transaction>::scriptForScriptHash(const Data& hash) const
 // Explicitly instantiate a Signers for compatible transactions.
 template class TW::Bitcoin::TransactionSigner<Bitcoin::Transaction>;
 template class TW::Bitcoin::TransactionSigner<Zcash::Transaction>;
+template class TW::Bitcoin::TransactionSigner<Groestlcoin::Transaction>;

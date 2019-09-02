@@ -21,7 +21,7 @@ using namespace TW::Decred;
 
 TEST(DecredSigner, Sign) {
     const auto privateKey = PrivateKey(parse_hex("22a47fa09a223f2aa079edf85a7c2d4f8720ee63e502ee2869afab7de234b80c"));
-    const auto publicKey = privateKey.getPublicKey(PublicKeyType::secp256k1);
+    const auto publicKey = privateKey.getPublicKey(TWPublicKeyTypeSECP256k1);
     const auto keyhash = Hash::ripemd(Hash::blake256(publicKey.bytes));
 
     const auto address = Address(publicKey);
@@ -49,7 +49,7 @@ TEST(DecredSigner, Sign) {
 
     // Setup input
     Bitcoin::Proto::SigningInput input;
-    input.set_hash_type(TWSignatureHashTypeAll);
+    input.set_hash_type(TWBitcoinSigHashTypeAll);
     input.set_amount(100'000'000);
     input.set_byte_fee(1);
     input.set_to_address("DsoPDLh462ULTy1QMSvBGLqGKQENerrdZDH");

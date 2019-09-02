@@ -17,36 +17,38 @@
 #include <optional>
 #include <string>
 
-namespace TW {
-namespace Keystore {
+namespace TW::Keystore {
 
 /// An stored key can be either a private key or a mnemonic phrase for a HD
 /// wallet.
-enum class StoredKeyType { privateKey, mnemonicPhrase, watchOnly };
+enum class StoredKeyType { privateKey, mnemonicPhrase };
 
 /// Represents a key stored as an encrypted file.
 struct StoredKey {
     /// Type of key stored.
     StoredKeyType type;
 
-    /// Encrypted payload.
-    EncryptionParameters payload;
-
     /// Unique identifier.
     std::optional<std::string> id;
+
+    /// Name.
+    std::string name;
+
+    /// Encrypted payload.
+    EncryptionParameters payload;
 
     /// Active accounts.
     std::vector<Account> accounts;
 
     /// Initializes a `StoredKey` with a type and an encrypted payload.
-    StoredKey(StoredKeyType type, const EncryptionParameters& payload);
+    StoredKey(StoredKeyType type, std::string name, EncryptionParameters payload);
 
     /// Initializes a `StoredKey` with a type, an encryption password, and
     /// unencrypted data.
     ///
     /// This contstructor will encrypt the provided data with default encryption
     /// parameters.
-    StoredKey(StoredKeyType type, const std::string& password, Data data);
+    StoredKey(StoredKeyType type, std::string name, const std::string& password, Data data);
 
     /// Returns the HDWallet for this key.
     ///
@@ -60,7 +62,10 @@ struct StoredKey {
 
     /// Returns the account for a specific coin if it exists.
     const Account* account(TWCoinType coin) const;
-
+    
+    /// Remove the account for a specific coin
+    void removeAccount(TWCoinType coin);
+    
     /// Returns the private key for a specific coin, creating an account if
     /// necessary.
     ///
@@ -93,8 +98,7 @@ struct StoredKey {
     void fixAddresses(const std::string& password);
 };
 
-} // namespace Keystore
-} // namespace TW
+} // namespace TW::Keystore
 
 /// Wrapper for C interface.
 struct TWStoredKey {

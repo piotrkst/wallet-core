@@ -10,13 +10,14 @@
 #include "TransactionPlan.h"
 #include "UnspentSelector.h"
 #include "../proto/Bitcoin.pb.h"
+#include <TrustWalletCore/TWCoinType.h>
 
 #include <algorithm>
 
-namespace TW {
-namespace Bitcoin {
+namespace TW::Bitcoin {
 
-struct TransactionBuilder {
+class TransactionBuilder {
+public:
     /// Plans a transaction by selecting UTXOs and calculating fees.
     static TransactionPlan plan(const Bitcoin::Proto::SigningInput& input) {
         auto plan = TransactionPlan();
@@ -28,7 +29,7 @@ struct TransactionBuilder {
         auto unspentSelector = UnspentSelector(calculator);
         if (input.use_max_amount() && UnspentSelector::sum(input.utxo()) == plan.amount) {
             output_size = 1;
-            auto newAmount = 0;
+            Amount newAmount = 0;
             auto input_size = 0;
 
             for (auto utxo : input.utxo()) {
@@ -63,8 +64,8 @@ struct TransactionBuilder {
     /// Builds a transaction by selecting UTXOs and calculating fees.
     template <typename Transaction>
     static Transaction build(const TransactionPlan& plan, const std::string& toAddress,
-                             const std::string& changeAddress) {
-        auto lockingScriptTo = Script::buildForAddress(toAddress);
+                             const std::string& changeAddress, enum TWCoinType coin) {
+        auto lockingScriptTo = Script::buildForAddress(toAddress, coin);
         if (lockingScriptTo.empty()) {
             return {};
         }
@@ -73,7 +74,7 @@ struct TransactionBuilder {
         tx.outputs.push_back(TransactionOutput(plan.amount, lockingScriptTo));
 
         if (plan.change > 0) {
-            auto lockingScriptChange = Script::buildForAddress(changeAddress);
+            auto lockingScriptChange = Script::buildForAddress(changeAddress, coin);
             tx.outputs.push_back(TransactionOutput(plan.change, lockingScriptChange));
         }
 
@@ -86,5 +87,4 @@ struct TransactionBuilder {
     }
 };
 
-} // namespace Bitcoin
-} // namespace TW
+} // namespace TW::Bitcoin

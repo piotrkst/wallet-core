@@ -24,14 +24,14 @@
 using namespace TW;
 using namespace TW::Keystore;
 
-StoredKey::StoredKey(StoredKeyType type, const EncryptionParameters& payload)
-    : type(type), payload(payload), id(), accounts() {
+StoredKey::StoredKey(StoredKeyType type, std::string name, EncryptionParameters payload)
+    : type(type), id(), name(std::move(name)), payload(std::move(payload)), accounts() {
     boost::uuids::random_generator gen;
     id = boost::lexical_cast<std::string>(gen());
 }
 
-StoredKey::StoredKey(StoredKeyType type, const std::string& password, Data data)
-    : type(type), payload(password, data), id(), accounts() {
+StoredKey::StoredKey(StoredKeyType type, std::string name, const std::string& password, Data data)
+    : type(type), id(), name(std::move(name)), payload(password, data), accounts() {
     boost::uuids::random_generator gen;
     id = boost::lexical_cast<std::string>(gen());
 }
@@ -78,12 +78,9 @@ const Account* StoredKey::account(TWCoinType coin, const HDWallet* wallet) {
 
     const auto derivationPath = TW::derivationPath(coin);
     const auto address = wallet->deriveAddress(coin);
-
-    std::string extendedPublicKey;
+    
     const auto version = TW::xpubVersion(coin);
-    if (version != TWHDVersionNone) {
-        extendedPublicKey = wallet->getExtendedPublicKey(derivationPath.purpose(), coin, version);
-    }
+    const auto extendedPublicKey = wallet->getExtendedPublicKey(derivationPath.purpose(), coin, version);
 
     accounts.emplace_back(address, derivationPath, extendedPublicKey);
     return &accounts.back();
@@ -98,6 +95,14 @@ const Account* StoredKey::account(TWCoinType coin) const {
     return nullptr;
 }
 
+void StoredKey::removeAccount(TWCoinType coin) {
+    accounts.erase(std::remove_if(accounts.begin(), accounts.end(), [coin](Account& account) -> bool {
+        return account.coin() == coin;
+        }
+    ), accounts.end());
+}
+
+
 const PrivateKey StoredKey::privateKey(TWCoinType coin, const std::string& password) {
     switch (type) {
     case StoredKeyType::mnemonicPhrase: {
@@ -107,21 +112,33 @@ const PrivateKey StoredKey::privateKey(TWCoinType coin, const std::string& passw
     }
     case StoredKeyType::privateKey:
         return PrivateKey(payload.decrypt(password));
-
-    case StoredKeyType::watchOnly:
-        throw std::invalid_argument("This is a watch-only key");
     }
 }
 
 void StoredKey::fixAddresses(const std::string& password) {
-    const auto wallet = this->wallet(password);
-    for (auto& account : accounts) {
-        if (!account.address.empty() && TW::validateAddress(account.coin(), account.address)) {
-            continue;
+    switch (type) {
+    case StoredKeyType::mnemonicPhrase: {
+        const auto wallet = this->wallet(password);
+        for (auto& account : accounts) {
+            if (!account.address.empty() && TW::validateAddress(account.coin(), account.address)) {
+                continue;
+            }
+            const auto& derivationPath = account.derivationPath;
+            const auto key = wallet.getKey(derivationPath);
+            account.address = TW::deriveAddress(derivationPath.coin(), key);
         }
-        const auto& derivationPath = account.derivationPath;
-        const auto key = wallet.getKey(derivationPath);
-        account.address = TW::deriveAddress(derivationPath.coin(), key);
+    }
+        break;
+    case StoredKeyType::privateKey: {
+        auto key = PrivateKey(payload.decrypt(password));
+        for (auto& account : accounts) {
+            if (!account.address.empty() && TW::validateAddress(account.coin(), account.address)) {
+                continue;
+            }
+            account.address = TW::deriveAddress(account.coin(), key);
+        }
+    }
+        break;
     }
 }
 
@@ -132,6 +149,7 @@ void StoredKey::fixAddresses(const std::string& password) {
 namespace CodingKeys {
 static const auto address = "address";
 static const auto type = "type";
+static const auto name = "name";
 static const auto id = "id";
 static const auto crypto = "crypto";
 static const auto activeAccounts = "activeAccounts";
@@ -141,23 +159,23 @@ static const auto coin = "coin";
 
 namespace UppercaseCodingKeys {
 static const auto crypto = "Crypto";
-}
+} // namespace UppercaseCodingKeys
 
 namespace TypeString {
 static const auto privateKey = "private-key";
 static const auto mnemonic = "mnemonic";
-static const auto watch = "watch";
 } // namespace TypeString
 
 StoredKey::StoredKey(const nlohmann::json& json) {
     if (json.count(CodingKeys::type) != 0 &&
         json[CodingKeys::type].get<std::string>() == TypeString::mnemonic) {
         type = StoredKeyType::mnemonicPhrase;
-    } else if (json.count(CodingKeys::type) != 0 &&
-               json[CodingKeys::type].get<std::string>() == TypeString::watch) {
-        type = StoredKeyType::watchOnly;
     } else {
         type = StoredKeyType::privateKey;
+    }
+
+    if (json.count(CodingKeys::name) != 0) {
+        name = json[CodingKeys::name].get<std::string>();
     }
 
     if (json.count(CodingKeys::id) != 0) {
@@ -169,8 +187,6 @@ StoredKey::StoredKey(const nlohmann::json& json) {
     } else if (json.count(UppercaseCodingKeys::crypto) != 0) {
         // Workaround for myEtherWallet files
         payload = EncryptionParameters(json[UppercaseCodingKeys::crypto]);
-    } else if (type == StoredKeyType::watchOnly) {
-        payload = EncryptionParameters();
     } else {
         throw DecryptionError::invalidKeyFile;
     }
@@ -182,7 +198,7 @@ StoredKey::StoredKey(const nlohmann::json& json) {
         }
     }
 
-    if (accounts.empty() && json[CodingKeys::address].is_string()) {
+    if (accounts.empty() && json.count(CodingKeys::address) != 0 && json[CodingKeys::address].is_string()) {
         TWCoinType coin = TWCoinTypeEthereum;
         if (json.count(CodingKeys::coin) != 0) {
             coin = json[CodingKeys::coin].get<TWCoinType>();
@@ -203,15 +219,13 @@ nlohmann::json StoredKey::json() const {
     case StoredKeyType::mnemonicPhrase:
         j[CodingKeys::type] = TypeString::mnemonic;
         break;
-    case StoredKeyType::watchOnly:
-        j[CodingKeys::type] = TypeString::watch;
-        break;
     }
 
     if (id) {
         j[CodingKeys::id] = *id;
     }
 
+    j[CodingKeys::name] = name;
     j[CodingKeys::crypto] = payload.json();
 
     nlohmann::json accountsJSON = nlohmann::json::array();

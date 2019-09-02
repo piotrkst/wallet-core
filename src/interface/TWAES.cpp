@@ -13,7 +13,7 @@
 
 TWData *_Nullable TWAESCBCEncrypt(TWData *_Nonnull key, TWData *_Nonnull data, TWData *_Nonnull iv) {
     aes_encrypt_ctx ctx;
-    if (aes_encrypt_key(TWDataBytes(key), TWDataSize(key), &ctx) == EXIT_FAILURE) {
+    if (aes_encrypt_key(TWDataBytes(key), static_cast<int>(TWDataSize(key)), &ctx) == EXIT_FAILURE) {
         return nullptr;
     }
 
@@ -36,12 +36,12 @@ TWData *_Nullable TWAESCBCDecrypt(TWData *_Nonnull key, TWData *_Nonnull data, T
     assert((TWDataSize(data) % 16) == 0);
 
     aes_decrypt_ctx ctx;
-    if (aes_decrypt_key(TWDataBytes(key), TWDataSize(key), &ctx) == EXIT_FAILURE) {
+    if (aes_decrypt_key(TWDataBytes(key), static_cast<int>(TWDataSize(key)), &ctx) == EXIT_FAILURE) {
         return nullptr;
     }
 
     TWData *result = TWDataCreateWithSize(TWDataSize(data));
-    for (auto i = 0; i < TWDataSize(data); i += 16) {
+    for (std::size_t i = 0; i < TWDataSize(data); i += 16) {
         aes_cbc_decrypt(TWDataBytes(data) + i, TWDataBytes(result) + i, 16, TWDataBytes(iv), &ctx);
     }
 
@@ -50,7 +50,7 @@ TWData *_Nullable TWAESCBCDecrypt(TWData *_Nonnull key, TWData *_Nonnull data, T
 
 TWData *_Nullable TWAESCTREncrypt(TWData *_Nonnull key, TWData *_Nonnull data, TWData *_Nonnull iv) {
 	aes_encrypt_ctx ctx;
-    if (aes_encrypt_key(TWDataBytes(key), TWDataSize(key), &ctx) == EXIT_FAILURE) {
+    if (aes_encrypt_key(TWDataBytes(key), static_cast<int>(TWDataSize(key)), &ctx) == EXIT_FAILURE) {
         return nullptr;
     }
 
@@ -62,7 +62,7 @@ TWData *_Nullable TWAESCTREncrypt(TWData *_Nonnull key, TWData *_Nonnull data, T
 
 TWData *_Nullable TWAESCTRDecrypt(TWData *_Nonnull key, TWData *_Nonnull data, TWData *_Nonnull iv) {
     aes_encrypt_ctx ctx;
-    if (aes_encrypt_key(TWDataBytes(key), TWDataSize(key), &ctx) == EXIT_FAILURE) {
+    if (aes_encrypt_key(TWDataBytes(key), static_cast<int>(TWDataSize(key)), &ctx) == EXIT_FAILURE) {
         return nullptr;
     }
 

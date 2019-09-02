@@ -22,8 +22,7 @@
 #include <string>
 #include <vector>
 
-namespace TW {
-namespace Decred {
+namespace TW::Decred {
 
 /// Helper class that performs Decred transaction signing.
 class Signer {
@@ -47,7 +46,10 @@ class Signer {
     Signer() = default;
 
     /// Initializes a transaction signer with signing input.
-    explicit Signer(Bitcoin::Proto::SigningInput&& input) : input(input) {}
+    explicit Signer(Bitcoin::Proto::SigningInput&& input) 
+      : input(input), plan(TransactionBuilder::plan(input)) {
+        transaction = TransactionBuilder::build(plan, input.to_address(), input.change_address());
+    }
 
     /// Initializes a transaction signer with signing input, a transaction, and
     /// a hash type.
@@ -79,8 +81,7 @@ class Signer {
     Data scriptForScriptHash(const Data& hash) const;
 };
 
-} // namespace Decred
-} // namespace TW
+} // namespace TW::Decred
 
 /// Wrapper for C interface.
 struct TWDecredSigner {

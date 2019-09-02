@@ -7,14 +7,15 @@
 #pragma once
 
 #include "AESParameters.h"
+#include "PBKDF2Parameters.h"
 #include "ScryptParameters.h"
 #include "../Data.h"
 
+#include <boost/variant.hpp>
 #include <nlohmann/json.hpp>
 #include <string>
 
-namespace TW {
-namespace Keystore {
+namespace TW::Keystore {
 
 /// Errors thrown when decrypting a key.
 enum class DecryptionError {
@@ -36,11 +37,8 @@ struct EncryptionParameters {
     /// Cipher parameters.
     AESParameters cipherParams = AESParameters();
 
-    /// Key derivation function, must be scrypt.
-    std::string kdf = "scrypt";
-
     /// Key derivation function parameters.
-    ScryptParameters kdfParams = ScryptParameters();
+    boost::variant<ScryptParameters, PBKDF2Parameters> kdfParams = ScryptParameters();
 
     /// Message authentication code.
     Data mac;
@@ -48,9 +46,11 @@ struct EncryptionParameters {
     EncryptionParameters() = default;
 
     /// Initializes `EncryptionParameters` with standard values.
-    EncryptionParameters(const Data& encrypted, const AESParameters& cipherParams,
-                         const ScryptParameters& kdfParams, const Data& mac)
-        : encrypted(encrypted), cipherParams(cipherParams), kdfParams(kdfParams), mac(mac) {}
+    EncryptionParameters(Data encrypted, AESParameters cipherParams, boost::variant<ScryptParameters, PBKDF2Parameters> kdfParams, Data mac)
+        : encrypted(std::move(encrypted))
+        , cipherParams(std::move(cipherParams))
+        , kdfParams(std::move(kdfParams))
+        , mac(std::move(mac)) {}
 
     /// Initializes `EncryptionParameters` by encrypting data with a password
     /// using standard values.
@@ -73,5 +73,4 @@ struct EncryptionParameters {
     virtual ~EncryptionParameters();
 };
 
-} // namespace Keystore
-} // namespace TW
+} // namespace TW::Keystore

@@ -4,8 +4,8 @@
 // terms governing use, modification, and redistribution, is contained in the
 // file LICENSE at the root of the source code distribution tree.
 
-#include "Signer.h"
 #include "Base64.h"
+#include "Signer.h"
 #include "../BinaryCoding.h"
 #include "../Hash.h"
 #include "../HexCoding.h"
@@ -33,7 +33,7 @@ std::string Signer::sign() const noexcept {
     auto hash = Hash::sha256(encodedWithHeaders);
     auto data = Data(hash.begin(), hash.end());
 
-    auto sign = key.sign(data, TWCurveEd25519);
+    auto sign = key.sign(data, TWCurveED25519);
 
     auto signature = Data();
     signature.insert(signature.end(), encoded.begin(), encoded.end());

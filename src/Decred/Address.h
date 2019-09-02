@@ -12,13 +12,12 @@
 #include <array>
 #include <string>
 
-namespace TW {
-namespace Decred {
+namespace TW::Decred {
 
 class Address {
   public:
-    /// Public key hash.
-    std::array<byte, 20> keyhash;
+    /// Public key hash with prefixes.
+    std::array<byte, 22> bytes;
 
     /// Determines whether a string makes a valid  address.
     static bool isValid(const std::string& string) noexcept;
@@ -31,17 +30,13 @@ class Address {
 
     /// Returns a string representation of the address.
     std::string string() const;
-
-  private:
-    static std::array<byte, 4> checksum(const std::array<byte, 20>& keyhash);
 };
 
-static inline bool operator==(const Address& lhs, const Address& rhs) {
-    return lhs.keyhash == rhs.keyhash;
+inline bool operator==(const Address& lhs, const Address& rhs) {
+    return lhs.bytes == rhs.bytes;
 }
 
-} // namespace Decred
-} // namespace TW
+} // namespace TW::Decred
 
 /// Wrapper for C interface.
 struct TWDecredAddress {

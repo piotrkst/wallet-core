@@ -8,6 +8,7 @@
 
 #include "Data.h"
 
+#include <array>
 #include <string>
 #include <tuple>
 
@@ -18,7 +19,7 @@ std::tuple<uint8_t, bool> value(uint8_t c);
 /// Converts a range of bytes to a hexadecimal string representation.
 template <typename Iter>
 inline std::string hex(const Iter begin, const Iter end) {
-    static const char hexmap[16] = {
+    static constexpr std::array<char, 16> hexmap = {
         '0', '1', '2', '3', '4', '5', '6', '7',
         '8', '9', 'a', 'b', 'c', 'd', 'e', 'f'
     };
@@ -82,7 +83,7 @@ inline Data parse_hex(const Iter begin, const Iter end) {
         }
         it += 1;
 
-        result.push_back((std::get<0>(high) << 4) | std::get<0>(low));
+        result.push_back(static_cast<uint8_t>((std::get<0>(high) << 4) | std::get<0>(low)));
     }
 
     return result;

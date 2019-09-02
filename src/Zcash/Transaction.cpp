@@ -23,9 +23,9 @@ const auto shieldedSpendHashPersonalization = Data({'Z','c','a','s','h','S','S',
 const auto shieldedOutputsHashPersonalization = Data({'Z','c','a','s','h','S','O','u','t','p','u','t','H','a','s','h'});
 
 /// See also https://github.com/zcash/zcash/blob/36243f41f1d8df98bdc834825ba539263f1da121/src/consensus/upgrades.cpp#L28
-const byte saplingBranchID[] = {0xbb, 0x09, 0xb8, 0x76};
+constexpr std::array<byte, 4> saplingBranchID = {0xbb, 0x09, 0xb8, 0x76};
 
-Data Transaction::getPreImage(const Bitcoin::Script& scriptCode, int index, uint32_t hashType,
+Data Transaction::getPreImage(const Bitcoin::Script& scriptCode, size_t index, enum TWBitcoinSigHashType hashType,
                               uint64_t amount) const {
     assert(index < inputs.size());
 
@@ -38,7 +38,7 @@ Data Transaction::getPreImage(const Bitcoin::Script& scriptCode, int index, uint
     encode32LE(versionGroupId, data);
 
     // Input prevouts (none/all, depending on flags)
-    if ((hashType & TWSignatureHashTypeAnyoneCanPay) == 0) {
+    if ((hashType & TWBitcoinSigHashTypeAnyoneCanPay) == 0) {
         auto hashPrevouts = getPrevoutHash();
         std::copy(std::begin(hashPrevouts), std::end(hashPrevouts), std::back_inserter(data));
     } else {
@@ -46,8 +46,8 @@ Data Transaction::getPreImage(const Bitcoin::Script& scriptCode, int index, uint
     }
 
     // Input nSequence (none/all, depending on flags)
-    if ((hashType & TWSignatureHashTypeAnyoneCanPay) == 0 &&
-        !TWSignatureHashTypeIsSingle(hashType) && !TWSignatureHashTypeIsNone(hashType)) {
+    if ((hashType & TWBitcoinSigHashTypeAnyoneCanPay) == 0 &&
+        !TWBitcoinSigHashTypeIsSingle(hashType) && !TWBitcoinSigHashTypeIsNone(hashType)) {
         auto hashSequence = getSequenceHash();
         std::copy(std::begin(hashSequence), std::end(hashSequence), std::back_inserter(data));
     } else {
@@ -55,10 +55,10 @@ Data Transaction::getPreImage(const Bitcoin::Script& scriptCode, int index, uint
     }
 
     // Outputs (none/one/all, depending on flags)
-    if (!TWSignatureHashTypeIsSingle(hashType) && !TWSignatureHashTypeIsNone(hashType)) {
+    if (!TWBitcoinSigHashTypeIsSingle(hashType) && !TWBitcoinSigHashTypeIsNone(hashType)) {
         auto hashOutputs = getOutputsHash();
         copy(begin(hashOutputs), end(hashOutputs), back_inserter(data));
-    } else if (TWSignatureHashTypeIsSingle(hashType) && index < outputs.size()) {
+    } else if (TWBitcoinSigHashTypeIsSingle(hashType) && index < outputs.size()) {
         auto outputData = Data{};
         outputs[index].encode(outputData);
         auto hashOutputs =
@@ -176,13 +176,13 @@ void Transaction::encode(Data& data) const {
 }
 
 Data Transaction::getSignatureHash(const Bitcoin::Script& scriptCode, size_t index,
-                                   uint32_t hashType, uint64_t amount,
+                                   enum TWBitcoinSigHashType hashType, uint64_t amount,
                                    TWBitcoinSignatureVersion version) const {
     Data personalization;
     personalization.reserve(16);
     std::copy(sigHashPersonalization.begin(), sigHashPersonalization.begin() + 12,
               std::back_inserter(personalization));
-    std::copy(saplingBranchID, saplingBranchID + 4, std::back_inserter(personalization));
+    std::copy(saplingBranchID.begin(), saplingBranchID.end(), std::back_inserter(personalization));
 
     auto preimage = getPreImage(scriptCode, index, hashType, amount);
     auto hash = TW::Hash::blake2b(preimage, 32, personalization);

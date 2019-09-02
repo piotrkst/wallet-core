@@ -24,11 +24,11 @@ Result<Transaction> Signer::sign() {
               std::back_inserter(signedInputs));
 
     const bool hashSingle =
-        ((input.hash_type() & ~TWSignatureHashTypeAnyoneCanPay) == TWSignatureHashTypeSingle);
+        ((input.hash_type() & ~TWBitcoinSigHashTypeAnyoneCanPay) == TWBitcoinSigHashTypeSingle);
     for (auto i = 0; i < plan.utxos.size(); i += 1) {
         auto& utxo = plan.utxos[i];
 
-        // Only sign TWSignatureHashTypeSingle if there's a corresponding output
+        // Only sign TWBitcoinSigHashTypeSingle if there's a corresponding output
         if (hashSingle && i >= transaction.outputs.size()) {
             continue;
         }
@@ -102,7 +102,7 @@ Result<std::vector<Data>> Signer::signStep(Bitcoin::Script script, size_t index)
             return Result<std::vector<Data>>::failure("Missing private key.");
         }
 
-        auto pubkey = PrivateKey(key).getPublicKey(PublicKeyType::secp256k1);
+        auto pubkey = PrivateKey(key).getPublicKey(TWPublicKeyTypeSECP256k1);
         auto signature = createSignature(transactionToSign, script, key, index);
         if (signature.empty()) {
             // Error: Failed to sign
@@ -145,7 +145,7 @@ Result<std::vector<Data>> Signer::signStep(Bitcoin::Script script, size_t index)
 
 Data Signer::createSignature(const Transaction& transaction, const Bitcoin::Script& script,
                              const Data& key, size_t index) {
-    auto sighash = transaction.computeSignatureHash(script, index, input.hash_type());
+    auto sighash = transaction.computeSignatureHash(script, index, static_cast<TWBitcoinSigHashType>(input.hash_type()));
     auto pk = PrivateKey(key);
     auto signature = pk.signAsDER(Data(begin(sighash), end(sighash)), TWCurveSECP256k1);
     if (script.empty()) {
@@ -170,10 +170,10 @@ Data Signer::pushAll(const std::vector<Data>& results) {
             data.push_back(static_cast<uint8_t>(result.size()));
         } else if (result.size() <= 0xffff) {
             data.push_back(OP_PUSHDATA2);
-            encode16LE(result.size(), data);
+            encode16LE(static_cast<uint16_t>(result.size()), data);
         } else {
             data.push_back(OP_PUSHDATA4);
-            encode32LE(result.size(), data);
+            encode32LE(static_cast<uint32_t>(result.size()), data);
         }
         std::copy(begin(result), end(result), back_inserter(data));
     }
@@ -182,7 +182,7 @@ Data Signer::pushAll(const std::vector<Data>& results) {
 
 Data Signer::keyForPublicKeyHash(const Data& hash) const {
     for (auto& key : input.private_key()) {
-        auto publicKey = PrivateKey(key).getPublicKey(PublicKeyType::secp256k1);
+        auto publicKey = PrivateKey(key).getPublicKey(TWPublicKeyTypeSECP256k1);
         auto keyHash = TW::Hash::ripemd(TW::Hash::blake256(publicKey.bytes));
         if (std::equal(std::begin(keyHash), std::end(keyHash), std::begin(hash), std::end(hash))) {
             return Data(key.begin(), key.end());
